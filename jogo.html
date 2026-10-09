@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kenny — Subida dos Cadernos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        @keyframes jumpArc {
+            0% { transform: translate(-50%, 0) scale(1); }
+            50% { transform: translate(-50%, -18px) scale(1.1); }
+            100% { transform: translate(-50%, 0) scale(1); }
+        }
+        .animate-jump {
+            animation: jumpArc 0.12s ease-out;
+        }
+        @keyframes floatEffect {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+        }
+        .animate-float {
+            animation: floatEffect 1s ease-in-out infinite;
+        }
+        @keyframes swimFish1 {
+            0% { transform: translateX(-40px); opacity: 0; }
+            20% { opacity: 0.7; }
+            80% { opacity: 0.7; }
+            100% { transform: translateX(340px); opacity: 0; }
+        }
+        @keyframes swimFish2 {
+            0% { transform: translateX(340px) scaleX(-1); opacity: 0; }
+            20% { opacity: 0.6; }
+            80% { opacity: 0.6; }
+            100% { transform: translateX(-40px) scaleX(-1); opacity: 0; }
+        }
+        @keyframes bubbleRise {
+            0% { transform: translateY(0px) scale(0.8); opacity: 0; }
+            30% { opacity: 0.6; }
+            100% { transform: translateY(-350px) scale(1.2); opacity: 0; }
+        }
+        @keyframes windowBlink {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.9; }
+        }
+        @keyframes snowFall {
+            0% { transform: translateY(-10px); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(350px); opacity: 0; }
+        }
+        @keyframes musicFloat {
+            0% { transform: translateY(0px) scale(0.9); opacity: 0.2; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-300px) scale(1.2); opacity: 0; }
+        }
+        .fish-anim-1 {
+            animation: swimFish1 12s linear infinite;
+        }
+        .fish-anim-2 {
+            animation: swimFish2 15s linear infinite;
+        }
+        .bubble-anim {
+            animation: bubbleRise 4s ease-in-out infinite;
+        }
+        .window-glow {
+            animation: windowBlink 3s ease-in-out infinite;
+        }
+        .snow-anim {
+            animation: snowFall 3s linear infinite;
+        }
+        .music-anim {
+            animation: musicFloat 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-2 font-mono overflow-hidden">
+
+    <div id="mainWrapper" class="w-full max-w-sm bg-slate-900 border-2 border-emerald-500/30 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000">
+        
+        <!-- TOP BAR -->
+        <div class="w-full flex flex-col gap-2 z-10 bg-slate-900/90 pb-2 border-b border-slate-800 transition-colors duration-1000" id="topBar">
+            <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+                <span>RECORDE: <strong id="highScoreText" class="text-amber-400">0</strong></span>
+                <span id="speedIndicator" class="text-emerald-400 font-bold">1x SPEED</span>
+            </div>
+            
+            <div class="w-full bg-slate-800 h-3.5 rounded-full overflow-hidden border border-slate-700 relative">
+                <div id="timerBar" class="bg-emerald-400 h-full w-full transition-all duration-75"></div>
+            </div>
+
+            <div class="text-center text-2xl font-black text-emerald-400 tracking-wider" id="scoreHeader">
+                <span id="scoreText">0</span> <span class="text-xs text-slate-500 font-normal">PONTOS</span>
+            </div>
+        </div>
+
+        <!-- ÁREA DE JOGO -->
+        <div id="gameArea" class="w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-slate-950 border border-slate-800 transition-colors duration-1000">
+            
+            <!-- ELEMENTOS DE AMBIENTE (CÉU / NORMAL) -->
+            <div id="skyBackgroundElements" class="absolute inset-0 opacity-10 pointer-events-none flex flex-col justify-between p-4 transition-opacity duration-1000">
+                <div class="text-3xl">☁️</div>
+                <div class="text-3xl text-right">☁️</div>
+                <div class="text-3xl">☁️</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (SUBAQUÁTICO - ATIVADO NO DEGRAU 15) -->
+            <div id="waterBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute text-xl fish-anim-1" style="top: 15%;">🐠</div>
+                <div class="absolute text-2xl fish-anim-2" style="top: 45%; animation-delay: 3s;">🐟</div>
+                <div class="absolute text-lg fish-anim-1" style="top: 75%; animation-delay: 6s;">🐡</div>
+                
+                <div class="absolute bubble-anim text-sm" style="left: 20%; bottom: -20px; animation-delay: 0s;">🫧</div>
+                <div class="absolute bubble-anim text-base" style="left: 60%; bottom: -20px; animation-delay: 1.5s;">🫧</div>
+                <div class="absolute bubble-anim text-xs" style="left: 80%; bottom: -20px; animation-delay: 2.8s;">🫧</div>
+                <div class="absolute bubble-anim text-sm" style="left: 40%; bottom: -20px; animation-delay: 0.8s;">🫧</div>
+
+                <div class="absolute bottom-1 left-2 text-2xl opacity-30">🌿</div>
+                <div class="absolute bottom-1 right-2 text-2xl opacity-30">🪸</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (PRÉDIOS - ATIVADO NO DEGRAU 31) -->
+            <div id="cityBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute bottom-0 left-2 text-6xl opacity-20 select-none">🏢</div>
+                <div class="absolute bottom-0 left-20 text-7xl opacity-25 select-none">🏙️</div>
+                <div class="absolute bottom-0 right-4 text-7xl opacity-20 select-none">🏢</div>
+                <div class="absolute bottom-0 right-24 text-6xl opacity-30 select-none">🏬</div>
+                <div class="absolute top-10 left-10 text-xs text-amber-300 window-glow">🟨 🟨 ⬛ 🟨</div>
+                <div class="absolute top-24 right-12 text-xs text-amber-300 window-glow" style="animation-delay: 1s;">⬛ 🟨 🟨 🟨</div>
+                <div class="absolute top-40 left-16 text-xs text-amber-300 window-glow" style="animation-delay: 2s;">🟨 ⬛ ⬛ 🟨</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (ESPAÇO SIDERAL - ATIVADO NO DEGRAU 45) -->
+            <div id="spaceBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute text-xl animate-float" style="top: 10%; left: 15%;">⭐</div>
+                <div class="absolute text-2xl animate-float" style="top: 30%; right: 20%; animation-delay: 0.5s;">✨</div>
+                <div class="absolute text-3xl animate-float" style="top: 60%; left: 25%; animation-delay: 1.2s;">🪐</div>
+                <div class="absolute text-2xl animate-float" style="top: 80%; right: 15%; animation-delay: 2s;">⭐</div>
+                <div class="absolute text-3xl animate-float" style="top: 20%; left: 70%; animation-delay: 1.8s;">☄️</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (FAZENDA - ATIVADO NO DEGRAU 60) -->
+            <div id="farmBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute bottom-1 left-2 text-3xl opacity-30">🌾</div>
+                <div class="absolute bottom-1 right-2 text-3xl opacity-30">🌻</div>
+                <div class="absolute top-12 left-8 text-2xl animate-float">🚜</div>
+                <div class="absolute top-36 right-10 text-2xl animate-float" style="animation-delay: 1.5s;">🐄</div>
+                <div class="absolute top-64 left-16 text-xl opacity-40">🪵</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (MONTANHAS NEVADAS - ATIVADO NO DEGRAU 75) -->
+            <div id="snowBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute bottom-0 left-4 text-6xl opacity-25 select-none">🏔️</div>
+                <div class="absolute bottom-0 right-6 text-6xl opacity-25 select-none">🏔️</div>
+                <div class="absolute top-10 left-10 text-sm snow-anim">❄️</div>
+                <div class="absolute top-20 right-12 text-base snow-anim" style="animation-delay: 1s;">❄️</div>
+                <div class="absolute top-32 left-1/2 text-sm snow-anim" style="animation-delay: 2s;">❄️</div>
+                <div class="absolute top-48 left-16 text-xl opacity-40">🌲</div>
+                <div class="absolute top-16 right-20 text-xl opacity-40">🌲</div>
+            </div>
+
+            <!-- ELEMENTOS DE AMBIENTE (PIANO TOWER - ATIVADO NO DEGRAU 90) -->
+            <div id="pianoBackgroundElements" class="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-1000 overflow-hidden">
+                <div class="absolute bottom-2 left-4 text-4xl opacity-30 select-none">🎹</div>
+                <div class="absolute bottom-2 right-4 text-4xl opacity-30 select-none">🎼</div>
+                <div class="absolute music-anim text-lg" style="left: 30%; bottom: 10px; animation-delay: 0s;">🎶</div>
+                <div class="absolute music-anim text-base" style="left: 70%; bottom: 10px; animation-delay: 1.5s;">🎵</div>
+                <div class="absolute music-anim text-sm" style="left: 50%; bottom: 10px; animation-delay: 2.8s;">🎹</div>
+            </div>
+
+            <!-- CONTAINER DAS PLATAFORMAS -->
+            <div id="platformsContainer" class="absolute w-full bottom-0 left-0 transition-transform duration-150 ease-out"></div>
+
+            <!-- KENNY -->
+            <div id="kennyWrapper" class="absolute bottom-[28px] transition-all duration-150 ease-out z-20 flex flex-col items-center pointer-events-none" style="transform: translateX(-50%);">
+                <div id="kennySpeech" class="opacity-0 transition-opacity bg-slate-800 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md border border-emerald-500/40 mb-1 whitespace-nowrap">
+                    EI—
+                </div>
+                <canvas id="kennyCanvas" width="70" height="70"></canvas>
+            </div>
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="w-full grid grid-cols-2 gap-3 z-10 pt-1">
+            <button id="leftBtn" onclick="handleStep('left')" class="bg-slate-800 hover:bg-slate-700 active:bg-emerald-600/40 border border-emerald-500/40 text-emerald-400 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300">
+                ⬅️ ESQUERDA
+            </button>
+            <button id="rightBtn" onclick="handleStep('right')" class="bg-slate-800 hover:bg-slate-700 active:bg-emerald-600/40 border border-emerald-500/40 text-emerald-400 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300">
+                DIREITA ➡️
+            </button>
+        </div>
+
+        <!-- OVERLAY -->
+        <div id="overlayModal" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center">
+            <div id="gameOverVisual" class="mb-4 relative hidden">
+                <div class="text-2xl absolute -top-4 left-1/2 -translate-x-1/2 animate-bounce">💫 💫</div>
+                <canvas id="deadKennyCanvas" width="70" height="70" class="rotate-90 opacity-80"></canvas>
+            </div>
+
+            <h1 id="modalTitle" class="text-xl font-black text-emerald-400 mb-2">KENNY — SUBIDA DOS CADERNOS</h1>
+            <p id="modalSubtitle" class="text-xs text-slate-400 mb-6 max-w-xs">Toque na direção do próximo degrau para subir!</p>
+
+            <div id="gameOverStats" class="hidden w-full max-w-xs bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-6 space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Pontuação:</span>
+                    <strong id="finalScore" class="text-emerald-400">0</strong>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Recorde:</span>
+                    <strong id="finalHighScore" class="text-amber-400">0</strong>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black px-8 py-3.5 rounded-2xl text-base tracking-wide shadow-lg shadow-emerald-500/20 transition-all">
+                JOGAR AGORA 🚀
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playStepSound(level) {
+            initAudio();
+            if (!audioCtx) return;
+
+            // A partir do degrau 90 (Piano Tower), toca notas musicais suaves na escala pentatônica
+            if (level >= 90) {
+                const pianoFrequencies = [
+                    261.63, 293.66, 329.63, 392.00, 440.00, // C4, D4, E4, G4, A4
+                    523.25, 587.33, 659.25, 783.99, 880.00  // C5, D5, E5, G5, A5
+                ];
+                const freq = pianoFrequencies[level % pianoFrequencies.length];
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine'; // Som puro e limpo estilo teclado/piano suave
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+                osc.stop(audioCtx.currentTime + 0.35);
+            } else {
+                // Som padrão de acerto para os outros andares
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.08);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.25);
+                osc.stop(audioCtx.currentTime + 0.25);
+            }
+        }
+
+        function playErrorSound() {
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.35);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.35);
+            osc.stop(audioCtx.currentTime + 0.35);
+        }
+
+        class NeonPetRenderer {
+            constructor() {
+                this.animFrame = 0;
+                this.neonPulse = 0;
+            }
+
+            draw(ctx, width, height, state = 'idle') {
+                ctx.clearRect(0, 0, width, height);
+                ctx.save();
+                ctx.translate(width / 2, height / 2);
+                ctx.scale(1.4, 1.4);
+
+                this.neonPulse += 0.05;
+                const isSleeping = (state === 'dead' || state === 'sleep');
+                const neonColor = isSleeping ? '#007744' : '#00ff88';
+                
+                ctx.shadowColor = neonColor;
+                ctx.shadowBlur = (state === 'desperate' || state === 'happy') ? 22 : 14 + Math.sin(this.neonPulse) * 4;
+
+                if (isSleeping) {
+                    ctx.fillStyle = neonColor;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 4, 13, 11, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(0, -7, 11, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = '#050505';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-6, -7); ctx.lineTo(-2, -7);
+                    ctx.moveTo(2, -7); ctx.lineTo(6, -7);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = neonColor;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 4, 13, 11, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.ellipse(0, -7, 11, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#00cc6a';
+                    ctx.beginPath();
+                    ctx.ellipse(-9, -14, 5, 7, -0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(9, -14, 5, 7, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#050505';
+                    ctx.beginPath();
+                    ctx.arc(-4, -8, 2.5, 0, Math.PI * 2);
+                    ctx.arc(4, -8, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-3, -9, 1, 0, Math.PI * 2);
+                    ctx.arc(5, -9, 1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#003322';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -3, 3, 2.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = neonColor;
+                    ctx.shadowBlur = 6;
+                    ctx.fillRect(-9, 12, 6, 5);
+                    ctx.fillRect(3, 12, 6, 5);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        const petRenderer = new NeonPetRenderer();
+
+        let score = 0;
+        let highScore = localStorage.getItem('kenny_skyhop_highscore') || 0;
+        let timeLeft = 100;
+        let gameTimer = null;
+        let isPlaying = false;
+        let currentPos = 'left';
+        let platforms = [];
+        let currentLevelIndex = 0;
+
+        const mainWrapper = document.getElementById('mainWrapper');
+        const topBar = document.getElementById('topBar');
+        const gameArea = document.getElementById('gameArea');
+        const skyBackgroundElements = document.getElementById('skyBackgroundElements');
+        const waterBackgroundElements = document.getElementById('waterBackgroundElements');
+        const cityBackgroundElements = document.getElementById('cityBackgroundElements');
+        const spaceBackgroundElements = document.getElementById('spaceBackgroundElements');
+        const farmBackgroundElements = document.getElementById('farmBackgroundElements');
+        const snowBackgroundElements = document.getElementById('snowBackgroundElements');
+        const pianoBackgroundElements = document.getElementById('pianoBackgroundElements');
+        const scoreHeader = document.getElementById('scoreHeader');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+
+        const platformsContainer = document.getElementById('platformsContainer');
+        const kennyWrapper = document.getElementById('kennyWrapper');
+        const timerBar = document.getElementById('timerBar');
+        const scoreText = document.getElementById('scoreText');
+        const highScoreText = document.getElementById('highScoreText');
+        const speedIndicator = document.getElementById('speedIndicator');
+        const overlayModal = document.getElementById('overlayModal');
+        const kennySpeech = document.getElementById('kennySpeech');
+
+        const mainCtx = document.getElementById('kennyCanvas').getContext('2d');
+        const deadCtx = document.getElementById('deadKennyCanvas').getContext('2d');
+        
+        highScoreText.innerText = highScore;
+        petRenderer.draw(mainCtx, 70, 70, 'idle');
+        petRenderer.draw(deadCtx, 70, 70, 'dead');
+
+        function getPlatformLeft(side, isConsecutive) {
+            if (side === 'left') {
+                return isConsecutive ? '10%' : '30%'; 
+            } else {
+                return isConsecutive ? '65%' : '45%';
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            timeLeft = 100;
+            isPlaying = true;
+            currentPos = 'left';
+            platforms = [];
+            currentLevelIndex = 0;
+
+            updateEnvironmentTheme(0);
+
+            overlayModal.classList.add('hidden');
+            document.getElementById('gameOverVisual').classList.add('hidden');
+            document.getElementById('gameOverStats').classList.add('hidden');
+
+            platforms.push({ side: 'left', hasNotebook: false });
+
+            for (let i = 1; i < 120; i++) {
+                addPlatform();
+            }
+
+            platformsContainer.style.transform = 'translateY(0px)';
+            updateScoreUI();
+            renderPlatforms();
+            positionKenny();
+
+            clearInterval(gameTimer);
+            gameTimer = setInterval(gameLoop, 50);
+        }
+
+        function updateEnvironmentTheme(level) {
+            if (level >= 90) {
+                // Tema Piano Tower
+                mainWrapper.className = "w-full max-w-sm bg-neutral-950 border-2 border-purple-400/50 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-neutral-950/90 pb-2 border-b border-purple-900/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-neutral-900/40 border border-purple-500/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '1';
+                scoreHeader.className = "text-center text-2xl font-black text-purple-300 tracking-wider";
+                
+                leftBtn.className = "bg-neutral-900 hover:bg-neutral-800 active:bg-purple-600/60 border border-purple-400/60 text-purple-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]";
+                rightBtn.className = "bg-neutral-900 hover:bg-neutral-800 active:bg-purple-600/60 border border-purple-400/60 text-purple-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]";
+            } else if (level >= 75) {
+                // Tema Montanhas Nevadas
+                mainWrapper.className = "w-full max-w-sm bg-sky-950 border-2 border-sky-300/50 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-sky-950/90 pb-2 border-b border-sky-800/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-sky-900/30 border border-sky-500/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '1';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-sky-200 tracking-wider";
+                
+                leftBtn.className = "bg-sky-900/80 hover:bg-sky-800 active:bg-sky-600/40 border border-sky-400/40 text-sky-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-sky-900/80 hover:bg-sky-800 active:bg-sky-600/40 border border-sky-400/40 text-sky-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            } else if (level >= 60) {
+                // Tema Fazenda
+                mainWrapper.className = "w-full max-w-sm bg-amber-950 border-2 border-amber-600/50 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-amber-950/90 pb-2 border-b border-amber-900/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-amber-900/30 border border-amber-600/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '1';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-amber-300 tracking-wider";
+                
+                leftBtn.className = "bg-amber-900/80 hover:bg-amber-800 active:bg-amber-600/40 border border-amber-500/40 text-amber-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-amber-900/80 hover:bg-amber-800 active:bg-amber-600/40 border border-amber-500/40 text-amber-200 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            } else if (level >= 45) {
+                // Tema Espaço Sideral
+                mainWrapper.className = "w-full max-w-sm bg-black border-2 border-amber-400/50 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-black/90 pb-2 border-b border-amber-900/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-slate-950 border border-amber-500/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '1';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-amber-400 tracking-wider";
+                
+                leftBtn.className = "bg-slate-900 hover:bg-slate-800 active:bg-amber-600/40 border border-amber-400/40 text-amber-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-slate-900 hover:bg-slate-800 active:bg-amber-600/40 border border-amber-400/40 text-amber-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            } else if (level >= 31) {
+                // Tema Prédios
+                mainWrapper.className = "w-full max-w-sm bg-indigo-950 border-2 border-fuchsia-400/40 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-indigo-950/90 pb-2 border-b border-indigo-800/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-indigo-900/30 border border-fuchsia-700/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '1';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-fuchsia-400 tracking-wider";
+                
+                leftBtn.className = "bg-indigo-900/80 hover:bg-indigo-800 active:bg-fuchsia-600/40 border border-fuchsia-400/40 text-fuchsia-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-indigo-900/80 hover:bg-indigo-800 active:bg-fuchsia-600/40 border border-fuchsia-400/40 text-fuchsia-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            } else if (level >= 15) {
+                // Tema Subaquático
+                mainWrapper.className = "w-full max-w-sm bg-cyan-950 border-2 border-cyan-400/40 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-cyan-950/90 pb-2 border-b border-cyan-800/60 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-cyan-900/30 border border-cyan-700/40 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0';
+                waterBackgroundElements.style.opacity = '1';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-cyan-300 tracking-wider";
+                
+                leftBtn.className = "bg-cyan-900/80 hover:bg-cyan-800 active:bg-cyan-600/40 border border-cyan-400/40 text-cyan-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-cyan-900/80 hover:bg-cyan-800 active:bg-cyan-600/40 border border-cyan-400/40 text-cyan-300 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            } else {
+                // Tema Normal
+                mainWrapper.className = "w-full max-w-sm bg-slate-900 border-2 border-emerald-500/30 rounded-3xl p-4 shadow-2xl flex flex-col items-center relative overflow-hidden h-[620px] transition-colors duration-1000";
+                topBar.className = "w-full flex flex-col gap-2 z-10 bg-slate-900/90 pb-2 border-b border-slate-800 transition-colors duration-1000";
+                gameArea.className = "w-full flex-1 relative my-2 overflow-hidden rounded-2xl bg-slate-950 border border-slate-800 transition-colors duration-1000";
+                skyBackgroundElements.style.opacity = '0.1';
+                waterBackgroundElements.style.opacity = '0';
+                cityBackgroundElements.style.opacity = '0';
+                spaceBackgroundElements.style.opacity = '0';
+                farmBackgroundElements.style.opacity = '0';
+                snowBackgroundElements.style.opacity = '0';
+                pianoBackgroundElements.style.opacity = '0';
+                scoreHeader.className = "text-center text-2xl font-black text-emerald-400 tracking-wider";
+
+                leftBtn.className = "bg-slate-800 hover:bg-slate-700 active:bg-emerald-600/40 border border-emerald-500/40 text-emerald-400 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+                rightBtn.className = "bg-slate-800 hover:bg-slate-700 active:bg-emerald-600/40 border border-emerald-500/40 text-emerald-400 py-3.5 rounded-2xl font-bold text-base flex items-center justify-center gap-1 active:scale-95 transition-all duration-300";
+            }
+        }
+
+        function addPlatform() {
+            const lastSide = platforms.length > 0 ? platforms[platforms.length - 1].side : 'left';
+            
+            let consecutiveSameSide = 0;
+            for (let i = platforms.length - 1; i >= 0; i--) {
+                if (platforms[i].side === lastSide) consecutiveSameSide++;
+                else break;
+            }
+
+            let side;
+            if (consecutiveSameSide >= 2) {
+                side = lastSide === 'left' ? 'right' : 'left';
+            } else {
+                side = Math.random() < 0.5 ? 'left' : 'right';
+            }
+
+            const hasNotebook = Math.random() < 0.25; 
+            platforms.push({ side, hasNotebook });
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            let speedFactor = 1.0;
+            if (score >= 10) speedFactor = 1.2;
+            if (score >= 20) speedFactor = 1.4;
+            if (score >= 30) speedFactor = 1.7;
+            if (score >= 50) speedFactor = 2.0;
+
+            let decrease = (100 / 300) * speedFactor;
+            timeLeft -= decrease;
+
+            timerBar.style.width = `${Math.max(0, timeLeft)}%`;
+
+            if (timeLeft < 30) {
+                timerBar.className = 'bg-rose-500 h-full w-full transition-all duration-75';
+            } else {
+                if (currentLevelIndex >= 90) {
+                    timerBar.className = 'bg-purple-400 h-full w-full transition-all duration-75';
+                } else if (currentLevelIndex >= 75) {
+                    timerBar.className = 'bg-sky-300 h-full w-full transition-all duration-75';
+                } else if (currentLevelIndex >= 60) {
+                    timerBar.className = 'bg-amber-300 h-full w-full transition-all duration-75';
+                } else if (currentLevelIndex >= 45) {
+                    timerBar.className = 'bg-amber-400 h-full w-full transition-all duration-75';
+                } else if (currentLevelIndex >= 31) {
+                    timerBar.className = 'bg-fuchsia-400 h-full w-full transition-all duration-75';
+                } else if (currentLevelIndex >= 15) {
+                    timerBar.className = 'bg-cyan-400 h-full w-full transition-all duration-75';
+                } else {
+                    timerBar.className = 'bg-emerald-400 h-full w-full transition-all duration-75';
+                }
+            }
+
+            if (score >= 50 || timeLeft < 25) {
+                petRenderer.draw(mainCtx, 70, 70, 'desperate');
+            } else {
+                petRenderer.draw(mainCtx, 70, 70, 'idle');
+            }
+
+            if (timeLeft <= 0) {
+                playErrorSound();
+                triggerGameOver("O tempo acabou!");
+            }
+        }
+
+        function handleStep(chosenSide) {
+            if (!isPlaying) return;
+
+            const nextPlatform = platforms[currentLevelIndex + 1];
+
+            if (chosenSide === nextPlatform.side) {
+                score++;
+                currentPos = chosenSide;
+                currentLevelIndex++;
+
+                // Toca a nota musical (ou som normal)
+                playStepSound(currentLevelIndex);
+
+                // Atualiza o ambiente dinamicamente
+                updateEnvironmentTheme(currentLevelIndex);
+
+                if (nextPlatform.hasNotebook) {
+                    timeLeft = Math.min(100, timeLeft + 25);
+                    nextPlatform.hasNotebook = false;
+                }
+
+                if (currentLevelIndex + 12 >= platforms.length) {
+                    for (let i = 0; i < 30; i++) {
+                        addPlatform();
+                    }
+                    renderPlatforms();
+                }
+
+                updateScoreUI();
+                positionKenny(true);
+                updateCamera();
+
+            } else {
+                playErrorSound();
+                triggerFallGameOver();
+            }
+        }
+
+        function positionKenny(isJumping = false) {
+            const currentPlatform = platforms[currentLevelIndex];
+            
+            let isConsecutive = false;
+            if (currentLevelIndex > 0 && platforms[currentLevelIndex - 1].side === currentPlatform.side) {
+                isConsecutive = true;
+            }
+
+            const platformLeft = getPlatformLeft(currentPlatform.side, isConsecutive);
+            kennyWrapper.style.left = `calc(${platformLeft} + 48px)`;
+            
+            if (isJumping) {
+                kennyWrapper.classList.remove('animate-jump');
+                void kennyWrapper.offsetWidth;
+                kennyWrapper.classList.add('animate-jump');
+            }
+        }
+
+        function renderPlatforms() {
+            platformsContainer.innerHTML = '';
+            
+            platforms.forEach((p, index) => {
+                const platEl = document.createElement('div');
+                const bottomPos = index * 68 + 18;
+                
+                let isConsecutive = false;
+                if (index > 0 && platforms[index - 1].side === p.side) {
+                    isConsecutive = true;
+                }
+
+                let platBorder = 'border-emerald-500/70 bg-slate-800';
+                if (index >= 90) {
+                    platBorder = 'border-purple-400/70 bg-neutral-900/95';
+                } else if (index >= 75) {
+                    platBorder = 'border-sky-300/70 bg-sky-900/80';
+                } else if (index >= 60) {
+                    platBorder = 'border-amber-500/70 bg-amber-900/80';
+                } else if (index >= 45) {
+                    platBorder = 'border-amber-400/70 bg-black/90';
+                } else if (index >= 31) {
+                    platBorder = 'border-fuchsia-400/70 bg-indigo-950/80';
+                } else if (index >= 15) {
+                    platBorder = 'border-cyan-400/70 bg-cyan-950/80';
+                }
+
+                platEl.className = `absolute h-6 w-24 rounded-lg ${platBorder} border-2 shadow-md flex items-center justify-center transition-colors duration-1000`;
+                platEl.style.bottom = `${bottomPos}px`;
+                platEl.style.left = getPlatformLeft(p.side, isConsecutive);
+
+                if (p.hasNotebook) {
+                    platEl.innerHTML = `<span class="text-xs animate-float">📓</span>`;
+                }
+
+                platformsContainer.appendChild(platEl);
+            });
+        }
+
+        function updateCamera() {
+            const offset = currentLevelIndex * 68;
+            platformsContainer.style.transform = `translateY(${offset}px)`;
+        }
+
+        function updateScoreUI() {
+            scoreText.innerText = score;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('kenny_skyhop_highscore', highScore);
+                highScoreText.innerText = highScore;
+            }
+
+            if (score >= 50) speedIndicator.innerText = "🔥 MAX SPEED";
+            else if (score >= 30) speedIndicator.innerText = "3x SPEED";
+            else if (score >= 20) speedIndicator.innerText = "2x SPEED";
+            else if (score >= 10) speedIndicator.innerText = "1.5x SPEED";
+            else speedIndicator.innerText = "1x SPEED";
+        }
+
+        function triggerFallGameOver() {
+            isPlaying = false;
+            clearInterval(gameTimer);
+
+            kennySpeech.style.opacity = '1';
+            
+            setTimeout(() => {
+                kennyWrapper.style.transform = 'translate(-50%, 200px) rotate(180deg)';
+                kennyWrapper.style.opacity = '0';
+            }, 150);
+
+            setTimeout(() => {
+                triggerGameOver("Kenny errou o degrau e caiu!");
+            }, 600);
+        }
+
+        function triggerGameOver(reason) {
+            isPlaying = false;
+            clearInterval(gameTimer);
+
+            document.getElementById('modalTitle').innerText = "FIM DE JOGO!";
+            document.getElementById('modalSubtitle').innerText = reason;
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('finalHighScore').innerText = highScore;
+
+            document.getElementById('gameOverVisual').classList.remove('hidden');
+            document.getElementById('gameOverStats').classList.remove('hidden');
+            overlayModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                kennyWrapper.style.transform = 'translateX(-50%)';
+                kennyWrapper.style.opacity = '1';
+                kennySpeech.style.opacity = '0';
+                petRenderer.draw(mainCtx, 70, 70, 'idle');
+            }, 300);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') handleStep('left');
+            if (e.key === 'ArrowRight') handleStep('right');
+        });
+    </script>
+</body>
+</html>

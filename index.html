@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="theme-light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloco de Notas Inteligente - Neon Virtual Pet</title>
+    <!-- Configuração PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00ff88">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip para importação e exportação de backups ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 3px; }
+
+        /* Estilos dos Temas */
+        .theme-light { background-color: #f8fafc; color: #0f172a; }
+        .theme-dark { background-color: #0f172a; color: #f8fafc; }
+        .theme-neon { background-color: #050505; color: #00ff88; }
+        
+        /* Tema Old School (Preto e Branco) */
+        .theme-oldschool { background-color: #0d0d0d; color: #e5e5e5; filter: grayscale(100%); }
+        .theme-oldschool .card-bg { background-color: #171717; border-color: #525252; color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+        .theme-oldschool .header-bg { background-color: #171717; border-color: #404040; }
+        .theme-oldschool .btn-primary { background-color: #ffffff; color: #000000; font-weight: bold; border: 1px solid #ffffff; }
+        .theme-oldschool .btn-primary:hover { background-color: #d4d4d4; }
+        .theme-oldschool input, .theme-oldschool select, .theme-oldschool textarea { background-color: #262626; border-color: #525252; color: #ffffff; }
+        .theme-oldschool #neon-pet-container { display: none !important; }
+
+        .theme-neon .card-bg { background-color: rgba(10, 10, 10, 0.95); border-color: #00ff88; color: #ffffff; box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); }
+        .theme-neon .header-bg { background-color: rgba(5, 5, 5, 0.95); border-color: #00ff88; }
+        .theme-neon .btn-primary { background-color: #00ff88; color: #000000; font-weight: bold; box-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+        .theme-neon .btn-primary:hover { background-color: #00cc6d; box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
+        .theme-neon input, .theme-neon select, .theme-neon textarea { background-color: #121212; border-color: #00ff88; color: #ffffff; }
+
+        /* Canvas de Fundo Fixo */
+        #bgCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Garantir legibilidade sobre o canvas */
+        header, main, .modal-card {
+            position: relative;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="min-h-screen transition-colors duration-200">
+
+    <canvas id="bgCanvas"></canvas>
+
+    <header class="sticky top-0 z-30 header-bg bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <!-- Linha Superior do Cabeçalho -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md shadow-brand-500/20 btn-primary">
+                    <i data-lucide="notebook-pen" class="w-6 h-6"></i>
+                </div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 bg-clip-text text-transparent hidden sm:block">
+                    Minhas Anotações
+                </h1>
+            </div>
+
+            <!-- Controles Adicionais do Topo -->
+            <div class="flex items-center gap-2">
+                <!-- Conectar Pasta Local -->
+                <button 
+                    onclick="selectLocalFolder()" 
+                    id="folderBtn"
+                    class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-sm font-medium transition-all border border-transparent"
+                    title="Selecionar Pasta Local para salvar ficheiros .txt"
+                >
+                    <i data-lucide="folder" class="w-4 h-4"></i>
+                    <span class="hidden md:inline" id="folderLabel">Conectar Pasta</span>
+                </button>
+
+                <!-- Baixar Todas as Notas em ZIP -->
+                <button 
+                    onclick="exportAllNotesAsZip()" 
+                    class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-sm font-medium transition-all border border-transparent"
+                    title="Baixar todas as anotações em um arquivo compactado ZIP"
+                >
+                    <i data-lucide="archive" class="w-4 h-4 text-emerald-500"></i>
+                    <span class="hidden md:inline">Baixar ZIP</span>
+                </button>
+
+                <!-- Restaurar Backup (ZIP ou TXT) -->
+                <button 
+                    onclick="document.getElementById('restoreFileInput').click()" 
+                    class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl text-sm font-medium transition-all border border-transparent"
+                    title="Restaurar notas de um arquivo ZIP ou arquivos TXT"
+                >
+                    <i data-lucide="upload" class="w-4 h-4 text-brand-500"></i>
+                    <span class="hidden md:inline">Restaurar</span>
+                </button>
+                <input type="file" id="restoreFileInput" class="hidden" accept=".zip,.txt" multiple onchange="handleRestoreFiles(event)">
+
+                <!-- Seletor de Temas -->
+                <select 
+                    id="themeSelect" 
+                    onchange="changeTheme(this.value)" 
+                    class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs py-2 px-2.5 rounded-xl border border-transparent focus:outline-none"
+                >
+                    <option value="light">☀ Claro</option>
+                    <option value="dark">🌙 Escuro</option>
+                    <option value="neon">⚡ Neon</option>
+                    <option value="oldschool">📽 Old School</option>
+                </select>
+
+                <!-- Nova Nota -->
+                <button 
+                    onclick="openModal()" 
+                    class="btn-primary flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-brand-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Nova Nota</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+            <div class="relative w-full">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Pesquisar por título ou conteúdo..." 
+                    class="w-full pl-10 pr-4 py-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all placeholder:text-slate-400 shadow-inner"
+                    oninput="filterNotes()"
+                >
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Filtros por Categoria + Criar Nova Categoria -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 custom-scrollbar">
+            <div class="flex items-center gap-2" id="categoryFilters"></div>
+            <button 
+                onclick="openCategoryModal()" 
+                class="flex items-center gap-1 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-200/90 dark:bg-slate-700/90 backdrop-blur-sm hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-all whitespace-nowrap"
+                title="Criar nova categoria"
+            >
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Criar Categoria</span>
+            </button>
+        </div>
+
+        <!-- Seção de Notas Fixadas -->
+        <div id="pinnedSection" class="mb-10 hidden">
+            <h2 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="pin" class="w-4 h-4 text-amber-500"></i>
+                Fixadas
+            </h2>
+            <div id="pinnedContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        </div>
+
+        <!-- Seção de Todas as Notas -->
+        <div>
+            <h2 id="allNotesTitle" class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                Todas as Anotações
+            </h2>
+            <div id="notesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+        </div>
+
+        <!-- Estado Vazio -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-20 text-center">
+            <div class="w-16 h-16 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-full flex items-center justify-center text-slate-400 mb-4">
+                <i data-lucide="sticky-note" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-lg font-medium text-slate-700 dark:text-slate-300 mb-1">Nenhuma nota encontrada</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-sm max-w-sm mb-6">
+                Crie uma nova anotação ou altere seus termos de busca e filtros.
+            </p>
+            <button 
+                onclick="openModal()" 
+                class="btn-primary inline-flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md shadow-brand-500/20 hover:bg-brand-600 transition-colors"
+            >
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Criar primeira nota
+            </button>
+        </div>
+
+    </main>
+
+    <div id="welcomePopupModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="relative w-full max-w-sm bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center transform scale-95 transition-transform duration-300" id="welcomePopupCard">
+            <!-- Avatar do Kenny em Canvas -->
+            <div class="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-400/60 flex items-center justify-center mb-2 shadow-lg shadow-emerald-500/30">
+                <canvas id="welcomeKennyCanvas" width="80" height="80"></canvas>
+            </div>
+            <h3 class="text-xs font-bold text-emerald-400 tracking-wider uppercase mb-1">Kenny Online</h3>
+            <p id="welcomePopupText" class="text-sm font-mono text-slate-200 my-3 leading-relaxed"></p>
+            <button 
+                onclick="closeWelcomePopup()" 
+                class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+                Beleza, vamos lá! ⚡
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Criação de Categoria Personalizada -->
+    <div id="categoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="card-bg bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 m-4 shadow-2xl border border-slate-100 dark:border-slate-700 transform scale-95 transition-transform duration-200 modal-card" id="categoryModalCard">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Nova Categoria</h3>
+                <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="saveCustomCategory(event)" class="space-y-4">
+                <div>
+                    <label for="newCategoryInput" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">Nome da Categoria</label>
+                    <input 
+                        type="text" 
+                        id="newCategoryInput" 
+                        required 
+                        placeholder="Ex: Livros, Projetos..." 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:text-white"
+                    >
+                </div>
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">Cancelar</button>
+                    <button type="submit" class="btn-primary px-5 py-2 text-sm font-medium bg-brand-500 text-white rounded-xl shadow-md">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Criação / Edição de Nota -->
+    <div id="noteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="card-bg bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg p-6 m-4 shadow-2xl border border-slate-100 dark:border-slate-700 transform scale-95 transition-transform duration-200 modal-card" id="modalCard">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white" id="modalTitle">Nova Anotação</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="noteForm" onsubmit="saveNote(event)" class="space-y-4">
+                <input type="hidden" id="noteId">
+                
+                <div>
+                    <label for="inputTitle" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">Título</label>
+                    <input 
+                        type="text" 
+                        id="inputTitle" 
+                        required 
+                        placeholder="Ex: Letra de música, Ideia de projeto..." 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:text-white"
+                    >
+                </div>
+
+                <div>
+                    <label for="inputCategory" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">Categoria</label>
+                    <select 
+                        id="inputCategory" 
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:text-white"
+                    ></select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-2">Cor do Cartão</label>
+                    <div class="flex items-center gap-3 flex-wrap" id="colorPicker"></div>
+                </div>
+
+                <div>
+                    <label for="inputContent" class="block text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 mb-1">Conteúdo</label>
+                    <textarea 
+                        id="inputContent" 
+                        rows="8" 
+                        required 
+                        placeholder="Escreva suas ideias ou composições aqui..." 
+                        oninput="if(pet) pet.onTyping()"
+                        class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 custom-scrollbar dark:text-white resize-none font-mono leading-relaxed"
+                    ></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl">Cancelar</button>
+                    <button type="submit" class="btn-primary px-5 py-2 text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-md">Salvar Nota</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Visualização da Nota -->
+    <div id="viewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-200">
+        <div id="viewModalCard" class="rounded-2xl w-full max-w-2xl max-h-[85vh] p-6 m-4 shadow-2xl border flex flex-col transform scale-95 transition-transform duration-200 modal-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+            <div class="flex items-start justify-between gap-4 pb-4 border-b border-current/10">
+                <div>
+                    <span id="viewCategory" class="inline-block px-2.5 py-1 text-xs font-semibold rounded-lg mb-2"></span>
+                    <h2 id="viewTitle" class="text-xl font-bold leading-tight"></h2>
+                </div>
+                <button onclick="closeViewModal()" class="opacity-70 hover:opacity-100 rounded-lg p-1">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto my-4 pr-2 custom-scrollbar">
+                <pre id="viewContent" class="whitespace-pre-wrap font-mono text-sm leading-relaxed font-normal"></pre>
+            </div>
+            <div class="pt-4 border-t border-current/10 flex items-center justify-between text-xs opacity-75">
+                <span id="viewDate"></span>
+                <div class="flex items-center gap-2">
+                    <button id="copyBtn" onclick="copyNoteContent()" class="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 rounded-lg font-medium transition-colors">
+                        <i data-lucide="copy" class="w-4 h-4"></i>
+                        <span>Copiar Texto</span>
+                    </button>
+                    <button id="editFromViewBtn" onclick="triggerEditFromView()" class="btn-primary flex items-center gap-1.5 px-3 py-1.5 bg-brand-500 text-white rounded-lg font-medium shadow">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                        <span>Editar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DO JOGO INTEGRADO (JOGO.HTML NA RAIZ) -->
+    <div id="gameModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="relative w-full max-w-md h-[680px] bg-slate-900 border-2 border-emerald-500/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="gameModalCard">
+            <!-- Barra superior do modal com botão de fechar -->
+            <div class="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 z-20">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs font-bold text-emerald-400 tracking-wider">KENNY ARCADE</span>
+                </div>
+                <button onclick="closeGameModal()" class="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- Iframe abrindo o jogo.html localizado na mesma pasta (raiz) -->
+            <iframe id="gameIframe" src="" class="w-full flex-1 border-0"></iframe>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ENGINE EXAGERADA DE CANVAS INTERATIVO DE FUNDO
+         */
+        class CanvasBgEngine {
+            constructor() {
+                this.canvas = document.getElementById('bgCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.bursts = [];
+                this.mouse = { x: -1000, y: -1000, radius: 150 };
+                this.theme = 'light';
+                
+                this.colors = {
+                    light: { particle: 'rgba(2, 132, 199, 0.4)', line: 'rgba(2, 132, 199, 0.15)', glow: '#0284c7' },
+                    dark: { particle: 'rgba(56, 189, 248, 0.5)', line: 'rgba(56, 189, 248, 0.12)', glow: '#38bdf8' },
+                    neon: { particle: 'rgba(0, 255, 136, 0.8)', line: 'rgba(0, 255, 136, 0.25)', glow: '#00ff88' },
+                    oldschool: { particle: 'rgba(200, 200, 200, 0.4)', line: 'rgba(150, 150, 150, 0.15)', glow: '#ffffff' }
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                window.addEventListener('mousemove', (e) => {
+                    this.mouse.x = e.clientX;
+                    this.mouse.y = e.clientY;
+                });
+                window.addEventListener('click', (e) => this.createBurst(e.clientX, e.clientY));
+
+                this.createParticles(70);
+                this.animate();
+            }
+
+            setTheme(theme) {
+                this.theme = theme;
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            createParticles(count) {
+                this.particles = [];
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: (Math.random() - 0.5) * 1.5,
+                        radius: Math.random() * 3 + 1,
+                        baseRadius: Math.random() * 3 + 1
+                    });
+                }
+            }
+
+            createBurst(x, y) {
+                const count = 16;
+                const palette = this.theme === 'neon' ? ['#00ff88', '#00e5ff', '#ffffff'] : 
+                                this.theme === 'oldschool' ? ['#ffffff', '#888888', '#444444'] : ['#0284c7', '#38bdf8', '#818cf8'];
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 / count) * i;
+                    const speed = Math.random() * 4 + 2;
+                    this.bursts.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: Math.random() * 4 + 2,
+                        alpha: 1,
+                        color: palette[Math.floor(Math.random() * palette.length)]
+                    });
+                }
+            }
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                const currentScheme = this.colors[this.theme] || this.colors.light;
+
+                for (let i = 0; i < this.particles.length; i++) {
+                    let p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > this.canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > this.canvas.height) p.vy *= -1;
+
+                    let dx = this.mouse.x - p.x;
+                    let dy = this.mouse.y - p.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < this.mouse.radius) {
+                        p.radius = p.baseRadius * 2.5;
+                        p.x -= (dx / dist) * 0.8;
+                        p.y -= (dy / dist) * 0.8;
+                    } else {
+                        p.radius = p.baseRadius;
+                    }
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = currentScheme.particle;
+                    if (this.theme === 'neon') {
+                        this.ctx.shadowBlur = 10;
+                        this.ctx.shadowColor = currentScheme.glow;
+                    } else {
+                        this.ctx.shadowBlur = 0;
+                    }
+                    this.ctx.fill();
+
+                    for (let j = i + 1; j < this.particles.length; j++) {
+                        let p2 = this.particles[j];
+                        let distance = Math.hypot(p.x - p2.x, p.y - p2.y);
+
+                        if (distance < 120) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(p.x, p.y);
+                            this.ctx.lineTo(p2.x, p2.y);
+                            this.ctx.strokeStyle = currentScheme.line;
+                            this.ctx.lineWidth = 1 - distance / 120;
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+
+                for (let i = this.bursts.length - 1; i >= 0; i--) {
+                    let b = this.bursts[i];
+                    b.x += b.vx;
+                    b.y += b.vy;
+                    b.alpha -= 0.025;
+
+                    if (b.alpha <= 0) {
+                        this.bursts.splice(i, 1);
+                        continue;
+                    }
+
+                    this.ctx.save();
+                    this.ctx.globalAlpha = b.alpha;
+                    this.ctx.beginPath();
+                    this.ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = b.color;
+                    this.ctx.shadowBlur = 12;
+                    this.ctx.shadowColor = b.color;
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        /**
+         * Neon Virtual Pet / Mascote Neon em Canvas
+         */
+        class NeonPet {
+            constructor() {
+                this.container = null;
+                this.canvas = null;
+                this.ctx = null;
+                this.speechBubble = null;
+                this.idleTimer = null;
+                this.isSleeping = false;
+                
+                this.state = 'idle';
+                this.animFrame = 0;
+                this.neonPulse = 0;
+
+                this.phrases = {
+                    welcome: [
+                        "Oi, criador! Já tava com saudades. 😄",
+                        "Olha só quem voltou! Vamos continuar essa ideia?",
+                        "Oi, criador! Não esquece de registrar aquela ideia genial antes que ela fuja. 💡",
+                        "Mais uma ideia? Ou só algo pra lembrar mais tarde?",
+                        "Cuidado... ideias boas costumam aparecer quando a gente menos espera.",
+                        "Você voltou! Então essa ideia ainda não terminou, hein?",
+                        "Oi! Vamos ver o que você deixou por aqui?",
+                        "Uma nota aberta... será que vem coisa boa daí?",
+                        "Só uma coisa pra lembrar mais tarde? Sei... 👀",
+                        "Registre tudo, criador. Até as ideias estranhas podem virar alguma coisa."
+                    ],
+                    save: [
+                        "Registro gravado no banco de dados! ⚡",
+                        "Sinal enviado! Nota armazenada com sucesso.",
+                        "Informação memorizada com brilho extra!"
+                    ],
+                    delete: [
+                        "Arquivo purgado com sucesso!",
+                        "Registro eliminado do sistema.",
+                        "Sinal resetado! Espaço liberado."
+                    ],
+                    theme: [
+                        "Calibrando espectro de cores neon!",
+                        "Novas frequências visuais detectadas!"
+                    ],
+                    idle: [
+                        "Aguardando novos comandos de escrita...",
+                        "Processando frequências no modo de espera...",
+                        "Estou online! Só clicar para interagir."
+                    ]
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.renderPet();
+                this.startAnimation();
+                this.resetIdleTimer();
+            }
+
+            renderPet() {
+                const petWrapper = document.createElement('div');
+                petWrapper.id = 'neon-pet-container';
+                petWrapper.className = 'fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2 select-none transition-all duration-300';
+
+                petWrapper.innerHTML = `
+                    <div id="pet-speech" class="hidden max-w-xs bg-slate-900 text-emerald-400 text-xs font-mono px-4 py-2.5 rounded-2xl shadow-xl border border-emerald-500/40 relative">
+                        <span id="pet-speech-text"></span>
+                        <div class="absolute -bottom-1.5 right-8 w-3 h-3 bg-slate-900 border-r border-b border-emerald-500/40 transform rotate-45"></div>
+                    </div>
+                    <button id="pet-body" onclick="pet.onClick()" class="flex items-center justify-center p-1 rounded-full hover:scale-110 active:scale-95 transition-all duration-200 focus:outline-none">
+                        <canvas id="neonPetCanvas" width="210" height="210"></canvas>
+                    </button>
+                `;
+
+                document.body.appendChild(petWrapper);
+                this.container = petWrapper;
+                this.canvas = document.getElementById('neonPetCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.speechBubble = document.getElementById('pet-speech');
+            }
+
+            drawNeonCharacter(ctx, x, y, scaleMultiplier = 1.75) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(scaleMultiplier, scaleMultiplier);
+
+                this.neonPulse += 0.05;
+                const neonColor = this.isSleeping ? '#007744' : '#00ff88';
+                
+                ctx.shadowColor = neonColor;
+                ctx.shadowBlur = this.state === 'happy' ? 22 : 14 + Math.sin(this.neonPulse) * 4;
+
+                if (this.isSleeping) {
+                    ctx.fillStyle = neonColor;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 4, 13, 11, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(0, -7, 11, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = '#050505';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-6, -7); ctx.lineTo(-2, -7);
+                    ctx.moveTo(2, -7); ctx.lineTo(6, -7);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = neonColor;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 4, 13, 11, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.ellipse(0, -7, 11, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#00cc6a';
+                    ctx.beginPath();
+                    ctx.ellipse(-9, -14, 5, 7, -0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(9, -14, 5, 7, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#050505';
+                    ctx.beginPath();
+                    ctx.arc(-4, -8, 2.5, 0, Math.PI * 2);
+                    ctx.arc(4, -8, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-3, -9, 1, 0, Math.PI * 2);
+                    ctx.arc(5, -9, 1, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#003322';
+                    ctx.beginPath();
+                    ctx.ellipse(0, -3, 3, 2.2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = neonColor;
+                    ctx.shadowBlur = 6;
+                    ctx.fillRect(-9, 12, 6, 5);
+                    ctx.fillRect(3, 12, 6, 5);
+                }
+
+                ctx.restore();
+            }
+
+            startAnimation() {
+                const render = () => {
+                    this.animFrame++;
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    const floatOffsetY = Math.sin(this.animFrame * 0.06) * 3;
+
+                    this.drawNeonCharacter(
+                        this.ctx,
+                        this.canvas.width / 2,
+                        this.canvas.height / 2 + floatOffsetY,
+                        1.75
+                    );
+
+                    requestAnimationFrame(render);
+                };
+                render();
+            }
+
+            setMood(mood, duration = 3000) {
+                this.state = mood;
+
+                if (mood === 'sleep') {
+                    this.isSleeping = true;
+                } else {
+                    this.isSleeping = false;
+                    this.resetIdleTimer();
+                }
+
+                if (duration > 0 && mood !== 'idle') {
+                    setTimeout(() => {
+                        if (!this.isSleeping) {
+                            this.state = 'idle';
+                        }
+                    }, duration);
+                }
+            }
+
+            speak(htmlContent, duration = 6000) {
+                const textSpan = document.getElementById('pet-speech-text');
+                textSpan.innerHTML = htmlContent;
+                this.speechBubble.classList.remove('hidden');
+
+                if (duration > 0) {
+                    setTimeout(() => {
+                        if(this.speechBubble) this.speechBubble.classList.add('hidden');
+                    }, duration);
+                }
+            }
+
+            getRandomPhrase(type) {
+                const list = this.phrases[type] || this.phrases.idle;
+                return list[Math.floor(Math.random() * list.length)];
+            }
+
+            onClick() {
+                if (this.isSleeping) {
+                    this.setMood('surprised', 1500);
+                    this.speak("Sistemas reativados! Modo de espera encerrado.");
+                    return;
+                }
+                this.setMood('happy', 4000);
+                
+                this.speak(`E aí! Quer dar uma pausa e jogar a Subida dos Cadernos?<br><button onclick="openGameModal()" class="mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs shadow transition-all cursor-pointer">🎮 Sim, Jogar!</button>`, 8000);
+            }
+
+            onSave() {
+                this.setMood('happy');
+                this.speak(this.getRandomPhrase('save'));
+            }
+
+            onDelete() {
+                this.setMood('surprised');
+                this.speak(this.getRandomPhrase('delete'));
+            }
+
+            onThemeChange() {
+                this.setMood('happy');
+                this.speak(this.getRandomPhrase('theme'));
+            }
+
+            onTyping() {
+                if (!this.isSleeping) {
+                    this.setMood('typing', 1000);
+                }
+            }
+
+            resetIdleTimer() {
+                clearTimeout(this.idleTimer);
+                this.idleTimer = setTimeout(() => {
+                    this.setMood('sleep', 0);
+                }, 45000);
+            }
+        }
+
+        /* --- CONTROLE DO POP-UP DE BOAS-VINDAS COM O KENNY (ATUALIZADO COM BOTÃO DE PASTA) --- */
+        function triggerWelcomePopup() {
+            if (!pet) return;
+            const randomMsg = pet.getRandomPhrase('welcome');
+            
+            const welcomeHtml = `${randomMsg}<br><br><button onclick="selectLocalFolder(); closeWelcomePopup();" class="mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow transition-all cursor-pointer">📁 Conectar/Reconectar Pasta</button>`;
+            
+            document.getElementById('welcomePopupText').innerHTML = welcomeHtml;
+
+            const welcomeCanvas = document.getElementById('welcomeKennyCanvas');
+            const wCtx = welcomeCanvas.getContext('2d');
+            wCtx.clearRect(0, 0, welcomeCanvas.width, welcomeCanvas.height);
+            pet.drawNeonCharacter(wCtx, welcomeCanvas.width / 2, welcomeCanvas.height / 2 + 3, 1.3);
+
+            const modal = document.getElementById('welcomePopupModal');
+            const card = document.getElementById('welcomePopupCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        }
+
+        function closeWelcomePopup() {
+            const modal = document.getElementById('welcomePopupModal');
+            const card = document.getElementById('welcomePopupCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+        }
+
+        /* --- CONTROLE DO MODAL DO JOGO --- */
+        function openGameModal() {
+            const modal = document.getElementById('gameModal');
+            const card = document.getElementById('gameModalCard');
+            const iframe = document.getElementById('gameIframe');
+            
+            if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes('jogo.html')) {
+                iframe.src = 'jogo.html'; 
+            }
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+            
+            if (pet && pet.speechBubble) {
+                pet.speechBubble.classList.add('hidden');
+            }
+        }
+
+        function closeGameModal() {
+            const modal = document.getElementById('gameModal');
+            const card = document.getElementById('gameModalCard');
+            
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+        }
+
+        document.getElementById('gameModal').addEventListener('click', (e) => {
+            if (e.target.id === 'gameModal') closeGameModal();
+        });
+
+
+        /* --- LÓGICA PRINCIPAL DA APLICAÇÃO DE NOTAS --- */
+        const COLOR_OPTIONS = [
+            { id: 'cyber', bg: 'bg-emerald-50 dark:bg-emerald-950/90', border: 'border-emerald-300 dark:border-emerald-700', badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 font-bold', dot: 'bg-emerald-400' },
+            { id: 'sunset', bg: 'bg-amber-50 dark:bg-amber-950/90', border: 'border-amber-300 dark:border-amber-700', badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 font-bold', dot: 'bg-amber-400' },
+            { id: 'neonpunk', bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/90', border: 'border-fuchsia-300 dark:border-fuchsia-700', badge: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900 dark:text-fuchsia-200 font-bold', dot: 'bg-fuchsia-400' },
+            { id: 'electric', bg: 'bg-blue-50 dark:bg-blue-950/90', border: 'border-blue-300 dark:border-blue-700', badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold', dot: 'bg-blue-400' },
+            { id: 'matrix', bg: 'bg-lime-50 dark:bg-lime-950/90', border: 'border-lime-300 dark:border-lime-700', badge: 'bg-lime-100 text-lime-800 dark:bg-lime-900 dark:text-lime-200 font-bold', dot: 'bg-lime-400' },
+            { id: 'lavender', bg: 'bg-violet-50 dark:bg-violet-950/90', border: 'border-violet-300 dark:border-violet-700', badge: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 font-bold', dot: 'bg-violet-400' },
+            { id: 'crimson', bg: 'bg-red-50 dark:bg-red-950/90', border: 'border-red-300 dark:border-red-700', badge: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 font-bold', dot: 'bg-red-400' },
+            { id: 'gold', bg: 'bg-yellow-50 dark:bg-yellow-950/90', border: 'border-yellow-300 dark:border-yellow-700', badge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 font-bold', dot: 'bg-yellow-400' },
+            { id: 'obsidian', bg: 'bg-slate-100 dark:bg-zinc-900', border: 'border-slate-300 dark:border-zinc-700', badge: 'bg-slate-200 text-slate-800 dark:bg-zinc-800 dark:text-zinc-200 font-bold', dot: 'bg-slate-400' }
+        ];
+
+        const defaultCategories = ['Ideias 💡', 'Composições 🎵', 'Trabalho', 'Pessoal', 'Estudos', 'Geral'];
+        let pet = null;
+        let canvasEngine = null;
+        let notes = [];
+        let categories = [...defaultCategories];
+        let selectedCategory = 'Todas';
+        let selectedColor = 'cyber';
+        let currentViewingNoteId = null;
+        let dirHandle = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            canvasEngine = new CanvasBgEngine();
+            pet = new NeonPet();
+            initTheme();
+            loadCategories();
+            loadNotes();
+            renderColorPicker();
+            renderCategoryFilters();
+            renderCategorySelectOptions();
+            renderNotes();
+            lucide.createIcons();
+
+            restoreLocalFolder();
+            initAutoBackup();
+
+            setTimeout(triggerWelcomePopup, 500);
+        });
+
+        /* --- SISTEMA DE PERSISTÊNCIA DA PASTA NO INDEXEDDB --- */
+        const DB_NAME = 'NotasDB';
+        const STORE_NAME = 'handles';
+
+        function openIDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME);
+                    }
+                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveDirHandleToIDB(handle) {
+            try {
+                const db = await openIDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(handle, 'localFolder');
+                return tx.complete;
+            } catch (err) {
+                console.error('Erro ao guardar handle na IndexedDB:', err);
+            }
+        }
+
+        async function getDirHandleFromIDB() {
+            try {
+                const db = await openIDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const request = tx.objectStore(STORE_NAME).get('localFolder');
+                    request.onsuccess = (e) => resolve(e.target.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            } catch (err) {
+                console.error('Erro ao recuperar handle da IndexedDB:', err);
+                return null;
+            }
+        }
+
+        async function restoreLocalFolder() {
+            if ('showDirectoryPicker' in window) {
+                const savedHandle = await getDirHandleFromIDB();
+                if (savedHandle) {
+                    dirHandle = savedHandle;
+                    updateFolderButtonUI("Reconectar: " + savedHandle.name, true);
+                }
+            }
+        }
+
+        function updateFolderButtonUI(name, needsClick = false) {
+            const btn = document.getElementById('folderBtn');
+            const label = document.getElementById('folderLabel');
+            label.innerText = name;
+            if (needsClick) {
+                btn.classList.add('border-amber-500', 'text-amber-600', 'dark:text-amber-400');
+                btn.title = "Clique para autorizar novamente o acesso rápido à pasta";
+            } else {
+                btn.classList.add('border-emerald-500', 'text-emerald-600', 'dark:text-emerald-400');
+            }
+        }
+
+        /* --- SISTEMA DE BACKUP AUTOMÁTICO --- */
+        function initAutoBackup() {
+            const LAST_BACKUP_KEY = 'app_last_auto_backup';
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            const lastBackup = localStorage.getItem(LAST_BACKUP_KEY);
+            const now = Date.now();
+
+            if (!lastBackup || (now - parseInt(lastBackup)) > ONE_DAY_MS) {
+                setTimeout(async () => {
+                    if (notes && notes.length > 0) {
+                        try {
+                            const zip = new JSZip();
+                            notes.forEach(note => {
+                                const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Nota_Sem_Titulo';
+                                const fileName = `${safeTitle}_${note.id}.txt`;
+                                const fileContent = `========================================\nTÍTULO: ${note.title}\nCATEGORIA: ${note.category}\nCOR: ${note.color || 'cyber'}\nATUALIZADO EM: ${new Date(note.updatedAt).toLocaleString('pt-BR')}\n========================================\n\n${note.content}`;
+                                zip.file(fileName, fileContent);
+                            });
+
+                            if (dirHandle && (await dirHandle.queryPermission({ mode: 'readwrite' })) === 'granted') {
+                                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                                const backupName = `Backup_Automatico_${new Date().toISOString().slice(0, 10)}.zip`;
+                                const fileHandle = await dirHandle.getFileHandle(backupName, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(zipBlob);
+                                await writable.close();
+                            }
+                            localStorage.setItem(LAST_BACKUP_KEY, now.toString());
+                        } catch (err) {
+                            console.error('Erro ao executar backup automático:', err);
+                        }
+                    }
+                }, 5000);
+            }
+        }
+
+        /* --- TEMAS --- */
+        function initTheme() {
+            const savedTheme = localStorage.getItem('app_theme') || 'light';
+            changeTheme(savedTheme, false);
+            document.getElementById('themeSelect').value = savedTheme;
+        }
+
+        function changeTheme(theme, notifyPet = true) {
+            document.documentElement.className = '';
+            document.documentElement.classList.add(`theme-${theme}`);
+            if (theme === 'dark' || theme === 'neon' || theme === 'oldschool') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            if (canvasEngine) canvasEngine.setTheme(theme);
+            localStorage.setItem('app_theme', theme);
+            if (notifyPet && pet) pet.onThemeChange();
+        }
+
+        /* --- CATEGORIAS PERSONALIZADAS --- */
+        function loadCategories() {
+            const savedCat = localStorage.getItem('app_custom_categories');
+            if (savedCat) {
+                try {
+                    const parsed = JSON.parse(savedCat);
+                    categories = [...new Set([...defaultCategories, ...parsed])];
+                } catch (e) {}
+            }
+        }
+
+        function openCategoryModal() {
+            const modal = document.getElementById('categoryModal');
+            const card = document.getElementById('categoryModalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        }
+
+        function closeCategoryModal() {
+            const modal = document.getElementById('categoryModal');
+            const card = document.getElementById('categoryModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+            document.getElementById('newCategoryInput').value = '';
+        }
+
+        function saveCustomCategory(e) {
+            e.preventDefault();
+            const input = document.getElementById('newCategoryInput');
+            const newCat = input.value.trim();
+
+            if (newCat && !categories.includes(newCat)) {
+                categories.push(newCat);
+                const customOnly = categories.filter(c => !defaultCategories.includes(c));
+                localStorage.setItem('app_custom_categories', JSON.stringify(customOnly));
+                renderCategoryFilters();
+                renderCategorySelectOptions();
+                closeCategoryModal();
+            }
+        }
+
+        function deleteCategory(catName, event) {
+            event.stopPropagation(); // Evita selecionar a categoria ao clicar no X
+
+            if (defaultCategories.includes(catName)) {
+                alert('Você não pode excluir as categorias padrão do sistema.');
+                return;
+            }
+
+            if (confirm(`Deseja realmente excluir a categoria "${catName}"? As notas associadas a ela passarão para a categoria "Geral".`)) {
+                // Move notas desta categoria para "Geral"
+                notes.forEach(note => {
+                    if (note.category === catName) {
+                        note.category = 'Geral';
+                    }
+                });
+                saveToLocalStorage();
+
+                // Remove da lista de categorias
+                categories = categories.filter(c => c !== catName);
+                const customOnly = categories.filter(c => !defaultCategories.includes(c));
+                localStorage.setItem('app_custom_categories', JSON.stringify(customOnly));
+
+                // Se a categoria excluída era a selecionada, volta para "Todas"
+                if (selectedCategory === catName) {
+                    selectedCategory = 'Todas';
+                }
+
+                renderCategoryFilters();
+                renderCategorySelectOptions();
+                renderNotes();
+
+                if (pet) pet.onDelete();
+            }
+        }
+
+        function renderCategorySelectOptions() {
+            const select = document.getElementById('inputCategory');
+            select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
+
+        /* --- MANIPULAÇÃO DE NOTAS & FILE SYSTEM --- */
+        async function selectLocalFolder() {
+            try {
+                if ('showDirectoryPicker' in window) {
+                    if (dirHandle) {
+                        const permission = await dirHandle.requestPermission({ mode: 'readwrite' });
+                        if (permission === 'granted') {
+                            updateFolderButtonUI(dirHandle.name);
+                            alert(`Pasta "${dirHandle.name}" reconectada com sucesso!`);
+                            return;
+                        }
+                    }
+                    dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    await saveDirHandleToIDB(dirHandle);
+                    updateFolderButtonUI(dirHandle.name);
+                    alert(`Pasta "${dirHandle.name}" conectada com sucesso!`);
+                } else {
+                    alert('O seu navegador não suporta a gravação direta em pastas locais.');
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') console.error(err);
+            }
+        }
+
+        async function saveNoteToTxtFile(note) {
+            if (!dirHandle) return;
+            try {
+                if ((await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') return;
+                const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Nota_Sem_Titulo';
+                const fileName = `${safeTitle}_${note.id}.txt`;
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                const fileContent = `========================================\nTÍTULO: ${note.title}\nCATEGORIA: ${note.category}\nCOR: ${note.color || 'cyber'}\nATUALIZADO EM: ${new Date(note.updatedAt).toLocaleString('pt-BR')}\n========================================\n\n${note.content}`;
+                await writable.write(fileContent);
+                await writable.close();
+            } catch (err) {
+                console.error('Erro ao salvar TXT:', err);
+            }
+        }
+
+        async function deleteNoteTxtFile(note) {
+            if (!dirHandle) return;
+            try {
+                if ((await dirHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') return;
+                const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Nota_Sem_Titulo';
+                const fileName = `${safeTitle}_${note.id}.txt`;
+                await dirHandle.removeEntry(fileName);
+            } catch (err) {
+                console.error('Erro ao remover TXT:', err);
+            }
+        }
+
+        /* Exporta todas as notas para ZIP */
+        async function exportAllNotesAsZip() {
+            if (!notes || notes.length === 0) {
+                alert('Não há anotações cadastradas para exportar.');
+                return;
+            }
+
+            try {
+                const zip = new JSZip();
+                
+                notes.forEach(note => {
+                    const safeTitle = note.title.replace(/[/\\?%*:|"<>]/g, '_').trim() || 'Nota_Sem_Titulo';
+                    const fileName = `${safeTitle}_${note.id}.txt`;
+                    const fileContent = `========================================\nTÍTULO: ${note.title}\nCATEGORIA: ${note.category}\nCOR: ${note.color || 'cyber'}\nATUALIZADO EM: ${new Date(note.updatedAt).toLocaleString('pt-BR')}\n========================================\n\n${note.content}`;
+                    
+                    zip.file(fileName, fileContent);
+                });
+
+                const content = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Minhas_Anotacoes_${new Date().toISOString().slice(0, 10)}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                if (pet) {
+                    pet.speak("Arquivo ZIP com todas as notas gerado com sucesso! 📦");
+                }
+            } catch (err) {
+                console.error('Erro ao gerar arquivo ZIP:', err);
+                alert('Ocorreu um erro ao gerar o arquivo ZIP.');
+            }
+        }
+
+        /* RESTAURAR BACKUP */
+        async function handleRestoreFiles(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let importedCount = 0;
+
+            try {
+                for (let file of files) {
+                    if (file.name.endsWith('.zip')) {
+                        const zip = new JSZip();
+                        const zipContent = await zip.loadAsync(file);
+
+                        for (let relativePath in zipContent.files) {
+                            const zipEntry = zipContent.files[relativePath];
+                            if (!zipEntry.dir && zipEntry.name.endsWith('.txt')) {
+                                const textData = await zipEntry.async('text');
+                                parseAndStoreNoteFromText(textData, zipEntry.name);
+                                importedCount++;
+                            }
+                        }
+                    } else if (file.name.endsWith('.txt')) {
+                        const textData = await file.text();
+                        parseAndStoreNoteFromText(textData, file.name);
+                        importedCount++;
+                    }
+                }
+
+                saveToLocalStorage();
+                renderCategoryFilters();
+                renderCategorySelectOptions();
+                renderNotes();
+                document.getElementById('restoreFileInput').value = '';
+
+                if (importedCount > 0) {
+                    alert(`Backup restaurado com sucesso! ${importedCount} nota(s) importada(s).`);
+                    if (pet) pet.onSave();
+                } else {
+                    alert('Nenhum arquivo de nota válido (.txt) foi encontrado no arquivo selecionado.');
+                }
+            } catch (err) {
+                console.error('Erro ao restaurar backup:', err);
+                alert('Ocorreu um erro ao processar o arquivo de backup.');
+            }
+        }
+
+        function parseAndStoreNoteFromText(fileContent, defaultFileName) {
+            let title = defaultFileName.replace(/\.[^/.]+$/, "").replace(/_[0-9]{10,}/, "");
+            let category = "Geral";
+            let color = "cyber";
+            let content = fileContent;
+
+            if (fileContent.includes('========================================"') || fileContent.includes('TÍTULO:')) {
+                const lines = fileContent.split('\n');
+                let contentStartIndex = 0;
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].startsWith('TÍTULO:')) {
+                        title = lines[i].replace('TÍTULO:', '').trim();
+                    }
+                    if (lines[i].startsWith('CATEGORIA:')) {
+                        category = lines[i].replace('CATEGORIA:', '').trim();
+                        if (category && !categories.includes(category)) {
+                            categories.push(category);
+                        }
+                    }
+                    if (lines[i].startsWith('COR:')) {
+                        color = lines[i].replace('COR:', '').trim();
+                    }
+                    if (lines[i].startsWith('========================================"') || (i > 3 && lines[i].trim() === '')) {
+                        contentStartIndex = i + 1;
+                        if (contentStartIndex < lines.length && lines[contentStartIndex].trim() === '') {
+                            contentStartIndex++;
+                        }
+                        break;
+                    }
+                }
+                content = lines.slice(contentStartIndex).join('\n').trim() || fileContent;
+            }
+
+            const existingIndex = notes.findIndex(n => n.title.toLowerCase() === title.toLowerCase());
+            if (existingIndex !== -1) {
+                notes[existingIndex].content = content;
+                notes[existingIndex].category = category || notes[existingIndex].category;
+                notes[existingIndex].color = color || notes[existingIndex].color;
+                notes[existingIndex].updatedAt = new Date().toISOString();
+            } else {
+                notes.unshift({
+                    id: Date.now().toString() + Math.floor(Math.random() * 1000),
+                    title: title || 'Nota Restaurada',
+                    content: content,
+                    category: category || 'Geral',
+                    color: color,
+                    pinned: false,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        }
+
+        function loadNotes() {
+            const saved = localStorage.getItem('app_notes');
+            if (saved) {
+                try { notes = JSON.parse(saved); } catch (e) { notes = getInitialNotes(); }
+            } else {
+                notes = getInitialNotes();
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('app_notes', JSON.stringify(notes));
+            const customOnly = categories.filter(c => !defaultCategories.includes(c));
+            localStorage.setItem('app_custom_categories', JSON.stringify(customOnly));
+        }
+
+        function getInitialNotes() {
+            return [
+                {
+                    id: '1',
+                    title: 'Exemplo de Composição Longa 🎵',
+                    content: '[Verso 1]\nNo ritmo do relógio, a cidade não para\nLuzes de neon refletidas no vidro\nCada passo incerto que a noite prepara\nGuarda em silêncio o nosso ruído.',
+                    category: 'Composições 🎵',
+                    color: 'cyber',
+                    pinned: true,
+                    updatedAt: new Date().toISOString()
+                }
+            ];
+        }
+
+        function renderCategoryFilters() {
+            const allCats = ['Todas', ...categories];
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = allCats.map(cat => {
+                const isSelected = selectedCategory === cat;
+                const isCustom = !defaultCategories.includes(cat) && cat !== 'Todas';
+
+                return `
+                    <div 
+                        onclick="selectCategory('${cat}')"
+                        class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap backdrop-blur-sm cursor-pointer transition-all ${
+                            isSelected 
+                            ? 'bg-brand-500 text-white shadow-sm btn-primary' 
+                            : 'bg-white/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 border border-slate-200/90 dark:border-slate-700/90 hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }"
+                    >
+                        <span>${cat}</span>
+                        ${isCustom ? `
+                            <button 
+                                onclick="deleteCategory('${cat}', event)" 
+                                class="p-0.5 hover:bg-black/20 dark:hover:bg-white/20 rounded-full text-current opacity-70 hover:opacity-100 transition-opacity"
+                                title="Excluir categoria personalizada"
+                            >
+                                <i data-lucide="x" class="w-3 h-3"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            renderCategoryFilters();
+            renderNotes();
+        }
+
+        function renderColorPicker() {
+            const container = document.getElementById('colorPicker');
+            container.innerHTML = COLOR_OPTIONS.map(c => `
+                <button 
+                    type="button" 
+                    onclick="selectColor('${c.id}')"
+                    class="w-7 h-7 rounded-full border-2 transition-transform ${c.dot} ${selectedColor === c.id ? 'scale-125 border-brand-500 shadow-md ring-2 ring-brand-500/40' : 'border-transparent'}"
+                    title="${c.id}"
+                ></button>
+            `).join('');
+        }
+
+        function selectColor(colorId) {
+            selectedColor = colorId;
+            renderColorPicker();
+        }
+
+        function filterNotes() { 
+            renderNotes(); 
+        }
+
+        function renderNotes() {
+            const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            let filtered = notes.filter(note => {
+                const matchesTitle = note.title.toLowerCase().includes(searchQuery);
+                const matchesContent = note.content.toLowerCase().includes(searchQuery);
+                const matchesSearch = searchQuery === '' || matchesTitle || matchesContent;
+                const matchesCategory = selectedCategory === 'Todas' || note.category === selectedCategory;
+
+                return matchesSearch && matchesCategory;
+            });
+
+            if (searchQuery !== '') {
+                filtered.sort((a, b) => {
+                    const aTitleMatches = a.title.toLowerCase().includes(searchQuery);
+                    const bTitleMatches = b.title.toLowerCase().includes(searchQuery);
+
+                    if (aTitleMatches && !bTitleMatches) return -1;
+                    if (!aTitleMatches && bTitleMatches) return 1;
+
+                    return new Date(b.updatedAt) - new Date(a.updatedAt);
+                });
+            }
+
+            const pinned = filtered.filter(n => n.pinned);
+            const unpinned = filtered.filter(n => !n.pinned);
+
+            const pinnedContainer = document.getElementById('pinnedContainer');
+            const notesContainer = document.getElementById('notesContainer');
+            const pinnedSection = document.getElementById('pinnedSection');
+            const emptyState = document.getElementById('emptyState');
+
+            if (filtered.length === 0) {
+                pinnedSection.classList.add('hidden');
+                notesContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+
+            if (pinned.length > 0) {
+                pinnedSection.classList.remove('hidden');
+                pinnedContainer.innerHTML = pinned.map(note => createNoteCard(note)).join('');
+            } else {
+                pinnedSection.classList.add('hidden');
+            }
+
+            notesContainer.innerHTML = unpinned.map(note => createNoteCard(note)).join('');
+            lucide.createIcons();
+        }
+
+        function createNoteCard(note) {
+            const colorScheme = COLOR_OPTIONS.find(c => c.id === note.color) || COLOR_OPTIONS[0];
+            const formattedDate = new Date(note.updatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+            return `
+                <div 
+                    onclick="openViewModal('${note.id}')"
+                    class="card-bg group relative flex flex-col justify-between p-5 rounded-2xl border backdrop-blur-md ${colorScheme.bg} ${colorScheme.border} shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                >
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <span class="px-2.5 py-1 text-xs font-semibold rounded-lg ${colorScheme.badge}">
+                                ${note.category}
+                            </span>
+                            <div class="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity" onclick="event.stopPropagation()">
+                                <button onclick="togglePin('${note.id}')" class="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-amber-500">
+                                    <i data-lucide="pin" class="w-4 h-4 ${note.pinned ? 'fill-amber-500 text-amber-500' : ''}"></i>
+                                </button>
+                                <button onclick="editNote('${note.id}')" class="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-brand-500">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteNote('${note.id}')" class="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-500">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-2 line-clamp-2">${escapeHtml(note.title)}</h3>
+                        <p class="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono leading-relaxed line-clamp-5">${escapeHtml(note.content)}</p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-current/10 flex items-center justify-between text-[10px] opacity-75">
+                        <span>Atualizado em ${formattedDate}</span>
+                        <span class="text-brand-600 dark:text-brand-400 font-medium flex items-center gap-1 group-hover:underline">
+                            Ler tudo <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveNote(e) {
+            e.preventDefault();
+            const id = document.getElementById('noteId').value;
+            const title = document.getElementById('inputTitle').value.trim();
+            const category = document.getElementById('inputCategory').value;
+            const content = document.getElementById('inputContent').value.trim();
+
+            if (id) {
+                const note = notes.find(n => n.id === id);
+                if (note) {
+                    if (dirHandle && note.title !== title) {
+                        await deleteNoteTxtFile(note);
+                    }
+                    note.title = title;
+                    note.category = category;
+                    note.content = content;
+                    note.color = selectedColor;
+                    note.updatedAt = new Date().toISOString();
+                    await saveNoteToTxtFile(note);
+                }
+            } else {
+                const newNote = {
+                    id: Date.now().toString() + Math.floor(Math.random() * 1000),
+                    title,
+                    category,
+                    content,
+                    color: selectedColor,
+                    pinned: false,
+                    updatedAt: new Date().toISOString()
+                };
+                notes.unshift(newNote);
+                await saveNoteToTxtFile(newNote);
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            renderNotes();
+            if (pet) pet.onSave();
+        }
+
+        function editNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+
+            document.getElementById('noteId').value = note.id;
+            document.getElementById('inputTitle').value = note.title;
+            document.getElementById('inputCategory').value = note.category;
+            document.getElementById('inputContent').value = note.content;
+            selectedColor = note.color || 'cyber';
+            renderColorPicker();
+
+            document.getElementById('modalTitle').innerText = 'Editar Anotação';
+            openModal(true);
+        }
+
+        async function deleteNote(id) {
+            const index = notes.findIndex(n => n.id === id);
+            if (index !== -1) {
+                const note = notes[index];
+                if (confirm(`Tem certeza que deseja excluir a nota "${note.title}"?`)) {
+                    await deleteNoteTxtFile(note);
+                    notes.splice(index, 1);
+                    saveToLocalStorage();
+                    renderNotes();
+                    if (pet) pet.onDelete();
+                }
+            }
+        }
+
+        function togglePin(id) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note.pinned = !note.pinned;
+                saveToLocalStorage();
+                renderNotes();
+            }
+        }
+
+        function openViewModal(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            currentViewingNoteId = id;
+            const colorScheme = COLOR_OPTIONS.find(c => c.id === note.color) || COLOR_OPTIONS[0];
+
+            const viewModalCard = document.getElementById('viewModalCard');
+            viewModalCard.className = `rounded-2xl w-full max-w-2xl max-h-[85vh] p-6 m-4 shadow-2xl border flex flex-col transform scale-95 transition-transform duration-200 modal-card ${colorScheme.bg} ${colorScheme.border} backdrop-blur-2xl`;
+
+            const viewCategory = document.getElementById('viewCategory');
+            viewCategory.className = `inline-block px-2.5 py-1 text-xs font-semibold rounded-lg mb-2 ${colorScheme.badge}`;
+            viewCategory.innerText = note.category;
+
+            document.getElementById('viewTitle').innerText = note.title;
+            document.getElementById('viewContent').innerText = note.content;
+            document.getElementById('viewDate').innerText = `Atualizado em ${new Date(note.updatedAt).toLocaleString('pt-BR')}`;
+
+            const modal = document.getElementById('viewModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            viewModalCard.classList.remove('scale-95');
+            viewModalCard.classList.add('scale-100');
+        }
+
+        function closeViewModal() {
+            const modal = document.getElementById('viewModal');
+            const viewModalCard = document.getElementById('viewModalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            viewModalCard.classList.remove('scale-100');
+            viewModalCard.classList.add('scale-95');
+            currentViewingNoteId = null;
+        }
+
+        function triggerEditFromView() {
+            const id = currentViewingNoteId;
+            closeViewModal();
+            if (id) editNote(id);
+        }
+
+        function copyNoteContent() {
+            const content = document.getElementById('viewContent').innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-500"></i><span>Copiado!</span>`;
+                lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = `<i data-lucide="copy" class="w-4 h-4"></i><span>Copiar Texto</span>`;
+                    lucide.createIcons();
+                }, 2000);
+            });
+        }
+
+        function openModal(isEditing = false) {
+            if (!isEditing) {
+                document.getElementById('noteId').value = '';
+                document.getElementById('noteForm').reset();
+                selectedColor = 'cyber';
+                renderColorPicker();
+                document.getElementById('modalTitle').innerText = 'Nova Anotação';
+            }
+            const modal = document.getElementById('noteModal');
+            const card = document.getElementById('modalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('noteModal');
+            const card = document.getElementById('modalCard');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+        }
+
+        function setupBackdropListeners() {
+            ['noteModal', 'viewModal', 'categoryModal'].forEach(modalId => {
+                document.getElementById(modalId).addEventListener('click', (e) => {
+                    if (e.target.id === modalId) {
+                        if (modalId === 'noteModal') closeModal();
+                        if (modalId === 'viewModal') closeViewModal();
+                        if (modalId === 'categoryModal') closeCategoryModal();
+                    }
+                });
+            });
+        }
+        document.addEventListener('DOMContentLoaded', setupBackdropListeners);
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+
+    <!-- Registo do Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => {
+                        console.log('Service Worker registado com sucesso:', reg.scope);
+                    })
+                    .catch((err) => {
+                        console.log('Falha ao registar o Service Worker:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
