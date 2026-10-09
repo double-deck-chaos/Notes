@@ -1,9 +1,9 @@
 const CACHE_NAME = 'notas-neon-pwa-v1';
 const assetsToCache = [
-  './',
-  './index.html',
-  './jogo.html',
-  './manifest.json'
+  '/Notes/',
+  '/Notes/index.html',
+  '/Notes/jogo.html',
+  '/Notes/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -12,6 +12,11 @@ self.addEventListener('install', (event) => {
       return cache.addAll(assetsToCache);
     })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {

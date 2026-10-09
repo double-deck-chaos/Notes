@@ -1,8 +1,8 @@
 {
   "name": "Bloco de Notas Inteligente & Neon Pet",
   "short_name": "Notas Neon",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/Notes/",
+  "scope": "/Notes/",
   "display": "standalone",
   "background_color": "#050505",
   "theme_color": "#00ff88",
