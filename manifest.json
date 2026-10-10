@@ -1,4 +1,5 @@
 {
+  "id": "/Notes/",
   "name": "Bloco de Notas Inteligente & Neon Pet",
   "short_name": "Notas Neon",
   "description": "Um aplicativo de notas inteligente e elegante com recursos interativos.",
@@ -8,6 +9,9 @@
   "orientation": "portrait",
   "background_color": "#050505",
   "theme_color": "#00ff88",
+  "categories": ["utilities", "productivity"],
+  "lang": "pt-BR",
+  "dir": "ltr",
   "icons": [
     {
       "src": "icon-192.png",
@@ -20,6 +24,15 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Tela Principal"
     }
   ]
 }
